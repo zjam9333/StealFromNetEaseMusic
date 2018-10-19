@@ -113,10 +113,22 @@ def getSongDetail(songId): #2160833
     url = "http://music.163.com//weapi/v3/song/detail"
     return getJson(url,params)
 
+def getSongUrl(songId):
+    # params = None
+    # url = "http://music.163.com/song/media/outer/url?id=%d.mp3"%songId
+    url = "http://music.163.com/weapi/song/enhance/player/url?csrf_token="
+    params = {
+        'ids':[songId],
+        'br':320000,
+        'csrf_token':''
+    }
+    return getJson(url,params)
+
 if __name__ == "__main__":
     # print searchAlbum('the best of me andrea')
     # print getAlbum(217758)
-    print getSongDetail(17986313)
+    # print getSongDetail(17986313)
+    print getSongUrl(17986313)
 
     # result = search("r&b classic og",1000)
     # print result
