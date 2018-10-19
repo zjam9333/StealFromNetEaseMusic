@@ -92,15 +92,16 @@ def getAlbum(albumId): #217758
     return getJson(url,params)
 
 def getPlaylistDetail(playlistId): #971002652
-    url = 'http://music.163.com/eapi/v3/playlist/detail'
-    params = {
-        'csrf_token':'',
-        'n':100000,
-        'id':playlistId,
-        's':8
-    }
-    print params
-    # url = "http://music.163.com/playlist?id=%d"%playlistId
+    # url = 'http://music.163.com/eapi/v3/playlist/detail'
+    # params = {
+    #     'csrf_token':'',
+    #     'n':100000,
+    #     'id':playlistId,
+    #     's':8
+    # }
+    # print params
+    params = None
+    url = "https://music.163.com/api/playlist/detail?id=%d"%playlistId
     return getJson(url,params)
 
 def getSongDetail(songId): #2160833
@@ -115,7 +116,7 @@ def getSongDetail(songId): #2160833
 if __name__ == "__main__":
     # print searchAlbum('the best of me andrea')
     # print getAlbum(217758)
-    # print getSong(2160833)
+    print getSongDetail(17986313)
 
     # result = search("r&b classic og",1000)
     # print result
@@ -158,4 +159,5 @@ if __name__ == "__main__":
     #     if userId == 73206996:
     #         #is my playlist
     #         plId = pl['id']
-    print getPlaylistDetail(971002652)
+    # print getPlaylistDetail(971002652)
+
