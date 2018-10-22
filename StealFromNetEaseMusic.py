@@ -1,12 +1,19 @@
 #coding=utf-8
-
+import os
+import urllib
 import requests
 import json
 from Crypto.Cipher import AES
 import base64
 
+from mutagen.easyid3 import EasyID3
+from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB
+from PIL import Image
+
 # first_param = "{rid:\"\", offset:\"0\", total:\"true\", limit:\"100\", csrf_token:\"\"}"
 # first_param =  "{s:\"the best of me andrea\",type:10}"
+
+myFilePath = "stolenMP3"
 
 iv = "0102030405060708"
 nonce = "0CoJUm6Qyw8W8jud" #蜜钥？
@@ -115,20 +122,21 @@ def getSongDetail(songId): #2160833
 
 def getSongUrl(songId):
     # params = None
-    # url = "http://music.163.com/song/media/outer/url?id=%d.mp3"%songId
-    url = "http://music.163.com/weapi/song/enhance/player/url?csrf_token="
-    params = {
-        'ids':[songId],
-        'br':320000,
-        'csrf_token':''
-    }
-    return getJson(url,params)
+    url = "http://music.163.com/song/media/outer/url?id=%d.mp3"%songId
+    return url
+    # url = "http://music.163.com/weapi/song/enhance/player/url?csrf_token="
+    # params = {
+    #     'ids':[songId],
+    #     'br':320000,
+    #     'csrf_token':''
+    # }
+    # return getJson(url,params)
 
 if __name__ == "__main__":
     # print searchAlbum('the best of me andrea')
     # print getAlbum(217758)
     # print getSongDetail(17986313)
-    print getSongUrl(17986313)
+    # print getSongUrl(17986313)
 
     # result = search("r&b classic og",1000)
     # print result
@@ -171,5 +179,114 @@ if __name__ == "__main__":
     #     if userId == 73206996:
     #         #is my playlist
     #         plId = pl['id']
-    # print getPlaylistDetail(971002652)
 
+    #create dir if need
+    # if os.path.exists(myFilePath) == False:
+    #     os.mkdir(myFilePath)
+
+    #download mp3 in playlist
+    myplaylist = getPlaylistDetail(971002652)
+    myplaylist = json.loads(myplaylist)
+    tracks = myplaylist['result']['tracks']
+    print "song count: " + str(len(tracks))
+    for song in tracks:
+    	s_name = song['name']
+    	s_id = song['id']
+    	s_artist = song['artists'][0]['name']
+    	s_album = song['album']['name']
+    	s_album_pic = song['album']['picUrl']
+        s_mp3_url = getSongUrl(s_id)
+
+    	print "<song: name: %s, artist: %s, album: %s, album_pic: %s"%(s_name, s_artist, s_album, s_album_pic)
+
+        songname = "%s - %s"%(s_name, s_artist)
+        songname = songname.replace("/","")
+        saveFileName = songname + ".mp3"
+        filePath = myFilePath + "/" + saveFileName
+        # filePath = saveFileName
+        if os.path.exists(filePath):
+            print "file exists, skipped"
+            continue
+        print "downloading mp3 file...to " + filePath
+        urllib.urlretrieve(s_mp3_url, filePath)
+
+        jpgFileName = songname + ".jpg"
+        jpgPath = myFilePath + "/" + jpgFileName
+        print "downloading jpg file... to " + jpgPath
+        urllib.urlretrieve(s_album_pic, jpgPath)
+
+        # with open(jpgPath,'rb') as albumart:
+        try:
+            img = open(jpgPath,'r')
+            audio = ID3(filePath)
+            audio['APIC'] = APIC(
+                            encoding=3,
+                            mime='image/jpeg',
+                            type=3, 
+                            desc=u'Cover',
+                            data=img.read()
+                        )
+            audio['TIT2'] = TIT2(
+                            encoding=3,
+                            text=[s_name]
+                        )
+            audio['TPE1'] = TPE1(
+                            encoding=3,
+                            text=[s_artist]
+                        )
+            audio['TALB'] = TALB(
+                            encoding=3,
+                            text=[s_album]
+                        )
+            audio.save()
+        except BaseException:
+            print "err"
+        else:
+            img.close()
+
+    # print myplaylist
+
+    # testFile = myFilePath + "/" + "Because of You - Cindy Mizelle.mp3"
+    # # # audio = EasyID3()
+    # # print(EasyID3.valid_keys.keys())
+    # # # audio.pprint()
+    # # img = Image.open('test.jpg')
+
+    # with open('test.jpg','rb') as albumart:
+
+    #     audio = ID3(testFile)
+    #     print audio
+    #     audio['APIC'] = APIC(
+    #                   encoding=3,
+    #                   mime='image/jpeg',
+    #                   type=3, 
+    #                   desc=u'Cover',
+    #                   data=albumart.read()
+    #                 )
+    #     audio.save()
+
+    # # print audio
+    # jpgPath = myFilePath + "/" + "Back to My Emotions - Cindy Mizelle.jpg"
+    # filePath = myFilePath + "/" + "Back to My Emotions - Cindy Mizelle.mp3"
+    # img = open(jpgPath,'r')
+    # audio = ID3(filePath)
+    # audio['APIC'] = APIC(
+    #               encoding=3,
+    #               mime='image/jpeg',
+    #               type=3, 
+    #               desc=u'Cover',
+    #               data=img.read()
+    #             )
+    # audio.save()
+
+# from mutagen import File
+ 
+# afile = File('some.mp3') # mutagen can automatically detect format and type of tags
+# artwork = afile.tags['APIC:e'].data # access APIC frame and grab the image
+# with open('image.jpg', 'wb') as img:
+# img.write(artwork) # write artwork to new image
+# --------------------- 
+# 作者：codeAB 
+# 来源：CSDN 
+# 原文：https://blog.csdn.net/jiecooner/article/details/42321121 
+# 版权声明：本文为博主原创文章，转载请附上博文链接！
