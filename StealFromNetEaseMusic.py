@@ -132,57 +132,37 @@ def getSongUrl(songId):
     # }
     # return getJson(url,params)
 
+def setSongInfo(songfilepath, songtitle, songartist, songalbum, songpicpath):
+    audio = ID3(songfilepath)
+    img = open(songpicpath,'r')
+    audio.update_to_v23()
+    audio['APIC'] = APIC(
+                    encoding=3,
+                    mime='image/jpeg',
+                    type=3, 
+                    desc=u'Cover',
+                    data=img.read()
+                )
+    audio['TIT2'] = TIT2(
+                    encoding=3,
+                    text=[songtitle]
+                )
+    audio['TPE1'] = TPE1(
+                    encoding=3,
+                    text=[songartist]
+                )
+    audio['TALB'] = TALB(
+                    encoding=3,
+                    text=[songalbum]
+                )
+    audio.save()
+    img.close()
+
 if __name__ == "__main__":
-    # print searchAlbum('the best of me andrea')
-    # print getAlbum(217758)
-    # print getSongDetail(17986313)
-    # print getSongUrl(17986313)
-
-    # result = search("r&b classic og",1000)
-    # print result
-    # result = json.loads(result)
-    # js = {
-    #     "result":{
-    #         "playlists":[
-    #             {
-    #                 "id":971002652,
-    #                 "name":"R&B CLASSIC OG",
-    #                 "coverImgUrl":"http://p1.music.126.net/ZSeCJ4A2OHy7Y8li6HzzXA==/109951163599501306.jpg",
-    #                 "creator":{
-    #                     "nickname":"-zjj",
-    #                     "userId":73206996,
-    #                     "userType":0,
-    #                     "authStatus":0,
-    #                     "expertTags":"",
-    #                     "experts":""
-    #                 },
-    #                 "subscribed":False,
-    #                 "trackCount":103,
-    #                 "userId":73206996,
-    #                 "playCount":49,
-    #                 "bookCount":0,
-    #                 "description":"黑人唱歌就是好听",
-    #                 "highQuality":False,
-    #                 "alg":"alg_playlist_basic"
-    #             }
-    #         ],
-    #         "playlistCount":301
-    #     },
-    #     "code":200
-    # }
-
-    # playlists = json['result']['playlists']
-    # print 'count' + str(len(playlists))
-    # for pl in playlists:
-    #     print pl['name']
-    #     userId = pl['creator']['userId']
-    #     if userId == 73206996:
-    #         #is my playlist
-    #         plId = pl['id']
 
     #create dir if need
-    # if os.path.exists(myFilePath) == False:
-    #     os.mkdir(myFilePath)
+    if os.path.exists(myFilePath) == False:
+        os.mkdir(myFilePath)
 
     #download mp3 in playlist
     myplaylist = getPlaylistDetail(971002652)
@@ -208,85 +188,20 @@ if __name__ == "__main__":
             print "file exists, skipped"
             continue
         print "downloading mp3 file...to " + filePath
-        urllib.urlretrieve(s_mp3_url, filePath)
+        try:
+            urllib.urlretrieve(s_mp3_url, filePath)
+        except urllib.ContentTooShortError:
+            print "failed :" + songname
+            os.remove(filePath)
+            continue
+        else:
+            pass
 
         jpgFileName = songname + ".jpg"
         jpgPath = myFilePath + "/" + jpgFileName
         print "downloading jpg file... to " + jpgPath
         urllib.urlretrieve(s_album_pic, jpgPath)
 
-        # with open(jpgPath,'rb') as albumart:
-        try:
-            img = open(jpgPath,'r')
-            audio = ID3(filePath)
-            audio['APIC'] = APIC(
-                            encoding=3,
-                            mime='image/jpeg',
-                            type=3, 
-                            desc=u'Cover',
-                            data=img.read()
-                        )
-            audio['TIT2'] = TIT2(
-                            encoding=3,
-                            text=[s_name]
-                        )
-            audio['TPE1'] = TPE1(
-                            encoding=3,
-                            text=[s_artist]
-                        )
-            audio['TALB'] = TALB(
-                            encoding=3,
-                            text=[s_album]
-                        )
-            audio.save()
-        except BaseException:
-            print "err"
-        else:
-            img.close()
+        setSongInfo(filePath, s_name, s_artist, s_album, jpgPath)
 
-    # print myplaylist
-
-    # testFile = myFilePath + "/" + "Because of You - Cindy Mizelle.mp3"
-    # # # audio = EasyID3()
-    # # print(EasyID3.valid_keys.keys())
-    # # # audio.pprint()
-    # # img = Image.open('test.jpg')
-
-    # with open('test.jpg','rb') as albumart:
-
-    #     audio = ID3(testFile)
-    #     print audio
-    #     audio['APIC'] = APIC(
-    #                   encoding=3,
-    #                   mime='image/jpeg',
-    #                   type=3, 
-    #                   desc=u'Cover',
-    #                   data=albumart.read()
-    #                 )
-    #     audio.save()
-
-    # # print audio
-    # jpgPath = myFilePath + "/" + "Back to My Emotions - Cindy Mizelle.jpg"
-    # filePath = myFilePath + "/" + "Back to My Emotions - Cindy Mizelle.mp3"
-    # img = open(jpgPath,'r')
-    # audio = ID3(filePath)
-    # audio['APIC'] = APIC(
-    #               encoding=3,
-    #               mime='image/jpeg',
-    #               type=3, 
-    #               desc=u'Cover',
-    #               data=img.read()
-    #             )
-    # audio.save()
-
-# from mutagen import File
- 
-# afile = File('some.mp3') # mutagen can automatically detect format and type of tags
-# artwork = afile.tags['APIC:e'].data # access APIC frame and grab the image
-# with open('image.jpg', 'wb') as img:
-# img.write(artwork) # write artwork to new image
-# --------------------- 
-# 作者：codeAB 
-# 来源：CSDN 
-# 原文：https://blog.csdn.net/jiecooner/article/details/42321121 
-# 版权声明：本文为博主原创文章，转载请附上博文链接！
+        os.remove(jpgPath)
