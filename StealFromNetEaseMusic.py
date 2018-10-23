@@ -5,15 +5,14 @@ import requests
 import json
 from Crypto.Cipher import AES
 import base64
+import md5
 
-from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB
-from PIL import Image
 
 # first_param = "{rid:\"\", offset:\"0\", total:\"true\", limit:\"100\", csrf_token:\"\"}"
 # first_param =  "{s:\"the best of me andrea\",type:10}"
 
-myFilePath = "stolenMP3"
+myFilePath = "savedFiles"
 
 iv = "0102030405060708"
 nonce = "0CoJUm6Qyw8W8jud" #蜜钥？
@@ -60,7 +59,7 @@ def getJson(url, params):
             "params": encodeP,
             "encSecKey": "257348aecb5e556c066de214e531faadd1c55d814f9be95fd06d6bff9f4c7a41f831f6394d5a3fd2e3881736d94a02ca919d952872e7d0a50ebfa1769a7a62d512f5f1ca21aec60bc3819a9c3ffca5eca9a0dba6d6f7249b06f5965ecfff3695b54e1c28f3f624750ed39e7de08fc8493242e26dbc4484a01c76f739e135637c"
         }
-        print "post data:" + json.dumps(data)
+        # print "post data:" + json.dumps(data)
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:56.0) Gecko/20100101 Firefox/56.0',
         'Referer': 'http://music.163.com/'
@@ -92,11 +91,41 @@ def search(keyword,type):
     return getJson(url,params)
 
 def getAlbum(albumId): #217758
-    url = "http://music.163.com/weapi/v1/album/" + str(albumId)
-    params = {
-        'csrf_token': ""
-    }
-    return getJson(url,params)
+    # url = "http://music.163.com/weapi/v1/album/" + str(albumId)
+    # params = {
+    #     'csrf_token': ""
+    # }
+    # return getJson(url,params)
+    url = "http://music.163.com/api/album/" + str(albumId)
+    return getJson(url,None)
+    # {
+    # "code":200,
+    # "album":{
+    #     "songs":[
+    #         {
+    #             "starred":false,
+    #             "popularity":5,
+    #             "starredNum":0,
+    #             "playedNum":0,
+    #             "dayPlays":0,
+    #             "hearTime":0,
+    #             "mp3Url":"http://m2.music.126.net/hmZoNQaqzZALvVp0rE7faA==/0.mp3",
+    #             "rtUrls":null,
+    #             "status":0,
+    #             "alias":[
+
+    #             ],
+    #             "hMusic":{
+    #                 "bitrate":320000,
+    #                 "playTime":254380,
+    #                 "name":"",
+    #                 "id":3428815307,
+    #                 "size":10176305,
+    #                 "extension":"mp3",
+    #                 "volumeDelta":0,
+    #                 "dfsId":0,
+    #                 "sr":44100
+    #             },
 
 def getPlaylistDetail(playlistId): #971002652
     # url = 'http://music.163.com/eapi/v3/playlist/detail'
@@ -122,17 +151,38 @@ def getSongDetail(songId): #2160833
 
 def getSongUrl(songId):
     # params = None
-    url = "http://music.163.com/song/media/outer/url?id=%d.mp3"%songId
-    return url
-    # url = "http://music.163.com/weapi/song/enhance/player/url?csrf_token="
-    # params = {
-    #     'ids':[songId],
-    #     'br':320000,
-    #     'csrf_token':''
-    # }
+    # url = "http://music.163.com/song/media/outer/url?id=%d.mp3"%songId
+    # return url
+
+    url = "http://music.163.com/weapi/song/enhance/player/url?csrf_token="
+    params = {
+        'ids':[songId],
+        'br':"128000",
+        'csrf_token':''
+    }
+    result = getJson(url,params)
+    print result
+    result = json.loads(result)
+    mp3url = result['data'][0]['url']
+    return mp3url
     # return getJson(url,params)
 
+def encryptedSongId(id): #dfsId是很长的id，目前已消失
+    byte1 = bytearray('3go8&$8*3*3h0k(2)2')
+    byte2 = bytearray(id)
+    byte1_len = len(byte1)
+    for i in xrange(len(byte2)):
+        byte2[i] = byte2[i]^byte1[i%byte1_len]
+    m = md5.new()
+    m.update(byte2)
+    result = m.digest().encode('base64')[:-1]
+    result = result.replace('/', '_')
+    result = result.replace('+', '-')
+    return result
+
 def setSongInfo(songfilepath, songtitle, songartist, songalbum, songpicpath):
+    songfilepath = myFilePath + "/" + songfilepath
+    songpicpath = myFilePath + "/" + songpicpath
     audio = ID3(songfilepath)
     img = open(songpicpath,'r')
     audio.update_to_v23()
@@ -157,51 +207,59 @@ def setSongInfo(songfilepath, songtitle, songartist, songalbum, songpicpath):
                 )
     audio.save()
     img.close()
+    os.remove(songpicpath)
 
-if __name__ == "__main__":
-
+def downloadFile(source_url, save_path):
     #create dir if need
     if os.path.exists(myFilePath) == False:
         os.mkdir(myFilePath)
+
+    save_path = myFilePath + "/" + save_path
+    if os.path.exists(save_path):
+        print "file exists, skipped : " + save_path
+        return False
+
+    print "downloading file...to " + save_path
+    try:
+        urllib.urlretrieve(source_url, save_path)
+    except urllib.ContentTooShortError:
+        print "failed saving: " + save_path
+        os.remove(save_path)
+        return False
+    else:
+        pass
+    return True
+
+
+if __name__ == "__main__":
+
+# '''
 
     #download mp3 in playlist
     myplaylist = getPlaylistDetail(971002652)
     myplaylist = json.loads(myplaylist)
     tracks = myplaylist['result']['tracks']
     print "song count: " + str(len(tracks))
+
+    count = 0
     for song in tracks:
     	s_name = song['name']
     	s_id = song['id']
     	s_artist = song['artists'][0]['name']
     	s_album = song['album']['name']
-    	s_album_pic = song['album']['picUrl']
+    	s_pic_url = song['album']['picUrl']
         s_mp3_url = getSongUrl(s_id)
 
-    	print "<song: name: %s, artist: %s, album: %s, album_pic: %s"%(s_name, s_artist, s_album, s_album_pic)
+    	print "<song: name: %s, artist: %s, album: %s pic: %s"%(s_name, s_artist, s_album, s_pic_url)
 
         songname = "%s - %s"%(s_name, s_artist)
         songname = songname.replace("/","")
-        saveFileName = songname + ".mp3"
-        filePath = myFilePath + "/" + saveFileName
-        # filePath = saveFileName
-        if os.path.exists(filePath):
-            print "file exists, skipped"
-            continue
-        print "downloading mp3 file...to " + filePath
-        try:
-            urllib.urlretrieve(s_mp3_url, filePath)
-        except urllib.ContentTooShortError:
-            print "failed :" + songname
-            os.remove(filePath)
-            continue
-        else:
-            pass
 
-        jpgFileName = songname + ".jpg"
-        jpgPath = myFilePath + "/" + jpgFileName
-        print "downloading jpg file... to " + jpgPath
-        urllib.urlretrieve(s_album_pic, jpgPath)
+        mp3filepath = songname + ".mp3"
+        jpgfilepath = songname + ".jpg"
 
-        setSongInfo(filePath, s_name, s_artist, s_album, jpgPath)
-
-        os.remove(jpgPath)
+        downloadFile(s_mp3_url,mp3filepath)
+        downloadFile(s_pic_url,jpgfilepath)
+        setSongInfo(mp3filepath, s_name, s_artist, s_album, jpgfilepath)
+        
+# '''
