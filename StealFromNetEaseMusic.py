@@ -1,5 +1,6 @@
 #coding=utf-8
 import os
+from multiprocessing import Process
 import urllib
 import requests
 import json
@@ -33,22 +34,7 @@ def AES_encrypt(text, key, iv):
     encrypt_text = base64.b64encode(encrypt_text)
     return encrypt_text
 
-# def AES_decrypt(text, key, iv):
-#     encrypt_text = base64.b64decode(text)
-#     pad = 16 - len(text) % 16
-#     text = text[:-pad]
-#     encryptor = AES.new(key, AES.MODE_CBC, iv)
-#     encrypt_text = encryptor.decrypt(encrypt_text)
-#     return encrypt_text
-
-# def decodeParams(params):
-#     second_key = 16 * 'F'
-#     h_encText = AES_decrypt(params, second_key, iv)
-#     h_encText = AES_decrypt(h_encText, nonce, iv)
-#     return h_encText
-
 def getJson(url, params):
-    print '#####start networking'
     print url
     data = None
     if params:
@@ -65,7 +51,6 @@ def getJson(url, params):
         'Referer': 'http://music.163.com/'
     }   
     response = requests.post(url, headers=headers, data=data)
-    print '#####end networking'
     return response.content
 
 def search(keyword,type):
@@ -91,41 +76,11 @@ def search(keyword,type):
     return getJson(url,params)
 
 def getAlbum(albumId): #217758
-    # url = "http://music.163.com/weapi/v1/album/" + str(albumId)
-    # params = {
-    #     'csrf_token': ""
-    # }
-    # return getJson(url,params)
-    url = "http://music.163.com/api/album/" + str(albumId)
-    return getJson(url,None)
-    # {
-    # "code":200,
-    # "album":{
-    #     "songs":[
-    #         {
-    #             "starred":false,
-    #             "popularity":5,
-    #             "starredNum":0,
-    #             "playedNum":0,
-    #             "dayPlays":0,
-    #             "hearTime":0,
-    #             "mp3Url":"http://m2.music.126.net/hmZoNQaqzZALvVp0rE7faA==/0.mp3",
-    #             "rtUrls":null,
-    #             "status":0,
-    #             "alias":[
-
-    #             ],
-    #             "hMusic":{
-    #                 "bitrate":320000,
-    #                 "playTime":254380,
-    #                 "name":"",
-    #                 "id":3428815307,
-    #                 "size":10176305,
-    #                 "extension":"mp3",
-    #                 "volumeDelta":0,
-    #                 "dfsId":0,
-    #                 "sr":44100
-    #             },
+    url = "http://music.163.com/weapi/v1/album/" + str(albumId)
+    params = {
+        'csrf_token': ""
+    }
+    return getJson(url,params)
 
 def getPlaylistDetail(playlistId): #971002652
     # url = 'http://music.163.com/eapi/v3/playlist/detail'
@@ -146,7 +101,7 @@ def getSongDetail(songId): #2160833
         'ids':[str(songId)],
         'csrf_token':""
     }
-    url = "http://music.163.com//weapi/v3/song/detail"
+    url = "http://music.163.com/weapi/v3/song/detail"
     return getJson(url,params)
 
 def getSongUrl(songId):
@@ -181,8 +136,6 @@ def encryptedSongId(id): #dfsId是很长的id，目前已消失
     return result
 
 def setSongInfo(songfilepath, songtitle, songartist, songalbum, songpicpath):
-    songfilepath = myFilePath + "/" + songfilepath
-    songpicpath = myFilePath + "/" + songpicpath
     audio = ID3(songfilepath)
     img = open(songpicpath,'r')
     audio.update_to_v23()
@@ -207,14 +160,8 @@ def setSongInfo(songfilepath, songtitle, songartist, songalbum, songpicpath):
                 )
     audio.save()
     img.close()
-    os.remove(songpicpath)
 
 def downloadFile(source_url, save_path):
-    #create dir if need
-    if os.path.exists(myFilePath) == False:
-        os.mkdir(myFilePath)
-
-    save_path = myFilePath + "/" + save_path
     if os.path.exists(save_path):
         print "file exists, skipped : " + save_path
         return False
@@ -228,38 +175,61 @@ def downloadFile(source_url, save_path):
         return False
     else:
         pass
+    print "download completed: " + save_path
     return True
 
-
-if __name__ == "__main__":
-
-# '''
+def downloadPlaylistSongs(playlistid):
 
     #download mp3 in playlist
-    myplaylist = getPlaylistDetail(971002652)
+    myplaylist = getPlaylistDetail(playlistid)
     myplaylist = json.loads(myplaylist)
     tracks = myplaylist['result']['tracks']
     print "song count: " + str(len(tracks))
+    playlistname = myplaylist['result']['name']
+    print "playlist name: " + playlistname
 
-    count = 0
+    #create dir if need
+    saveDir = myFilePath + "/" + playlistname + "/"
+    if not os.path.exists(myFilePath):
+        os.mkdir(myFilePath)
+    if not os.path.exists(saveDir):
+        os.mkdir(saveDir)
+
     for song in tracks:
-    	s_name = song['name']
-    	s_id = song['id']
-    	s_artist = song['artists'][0]['name']
-    	s_album = song['album']['name']
-    	s_pic_url = song['album']['picUrl']
-        s_mp3_url = getSongUrl(s_id)
+        downloadSong(song,saveDir)
 
-    	print "<song: name: %s, artist: %s, album: %s pic: %s"%(s_name, s_artist, s_album, s_pic_url)
+    # delete old jpg files
+    filenamelist = os.listdir(saveDir)
+    for filename in filenamelist:
+        filepathtodelete = saveDir + filename
+        if os.path.isfile(filepathtodelete):
+            if filename.endswith('.jpg'):
+                print "delete jpg: " + filepathtodelete
+                os.remove(filepathtodelete)
+    return
 
-        songname = "%s - %s"%(s_name, s_artist)
-        songname = songname.replace("/","")
+def downloadSong(songdict,saveDir):
+    s_name = songdict['name']
+    s_id = songdict['id']
+    s_artist = songdict['artists'][0]['name']
+    s_album = songdict['album']['name']
+    s_pic_url = songdict['album']['picUrl']
+    s_mp3_url = getSongUrl(s_id)
 
-        mp3filepath = songname + ".mp3"
-        jpgfilepath = songname + ".jpg"
+    print "<song: name: %s, artist: %s, album: %s pic: %s"%(s_name, s_artist, s_album, s_pic_url)
 
-        downloadFile(s_mp3_url,mp3filepath)
-        downloadFile(s_pic_url,jpgfilepath)
-        setSongInfo(mp3filepath, s_name, s_artist, s_album, jpgfilepath)
-        
-# '''
+    songfilename = ("%s - %s"%(s_name, s_artist)).replace("/","")
+    albumfilename = ("%s - %s"%(s_album, s_artist)).replace("/","")
+
+    mp3filepath = saveDir + songfilename + ".mp3"
+    jpgfilepath = saveDir + albumfilename + ".jpg"
+
+    downloadFile(s_mp3_url,mp3filepath)
+    downloadFile(s_pic_url,jpgfilepath)
+    setSongInfo(mp3filepath, s_name, s_artist, s_album, jpgfilepath)
+
+if __name__ == "__main__":
+
+    # downloadPlaylistSongs(971002652) #rnb
+    downloadPlaylistSongs(962651306) #metallica
+    
