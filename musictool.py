@@ -4,6 +4,7 @@ import json
 import requests
 from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB
 import neteasetool
+from multiprocessing import Pool
 
 myFilePath = "savedFiles"
 
@@ -64,8 +65,12 @@ def downloadPlaylistSongs(playlistid):
     if not os.path.exists(saveDir):
         os.mkdir(saveDir)
 
+    pool = Pool(10)
     for song in tracks:
-        downloadSong(song,saveDir)
+        pool.apply(func=downloadSong, args=(song, saveDir,))
+        # downloadSong(song,saveDir)
+    pool.close()
+    pool.join()
 
     # delete old jpg files
     filenamelist = os.listdir(saveDir)
