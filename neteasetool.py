@@ -7,7 +7,7 @@ def getJson(url, params):
     print url
     data = None
     if params:
-        print params
+        # print params
         data = paramtool.encodedict(params)
         # print "post data:" + json.dumps(data)
     headers = {
@@ -79,11 +79,12 @@ def getSongUrl(songId):
         'br':128000,
         'csrf_token':''
     }
-    result = getJson(url,params)
-    print result
-    result = json.loads(result)
-    mp3url = result['data'][0]['url']
-    return mp3url
+    return getJson(url,params)
+    # print result
+    # return result
+    # result = json.loads(result)
+    # mp3url = result['data'][0]['url']
+    # return mp3url
     # return getJson(url,params)
 
 def encryptedSongId(id): #dfsId是很长的id，目前已消失
