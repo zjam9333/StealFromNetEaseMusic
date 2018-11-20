@@ -2,12 +2,17 @@
 import requests
 import json
 import paramtool
+import hashlib
+import base64
+import random
 
-def getJson(url, params):
-    print url
+def getJson(url, params, printurl = False, printresult = False):
+    if printurl:
+        print url
     data = None
     if params:
-        # print params
+        if printurl:
+            print params
         data = paramtool.encodedict(params)
         # print "post data:" + json.dumps(data)
     headers = {
@@ -15,6 +20,8 @@ def getJson(url, params):
         'Referer': 'http://music.163.com/'
     }   
     response = requests.post(url, headers=headers, data=data)
+    if printresult:
+        print response.content
     return response.content
 
 def search(keyword,type):
@@ -57,7 +64,7 @@ def getPlaylistDetail(playlistId): #971002652
     # print params
     params = None
     url = "https://music.163.com/api/playlist/detail?id=%d"%playlistId
-    return getJson(url,params)
+    return getJson(url,params,printurl = True)
 
 def getSongDetail(songId): #2160833
     params = {
@@ -71,6 +78,13 @@ def getSongDetail(songId): #2160833
 def getSongUrl(songId):
     # params = None
     # url = "http://music.163.com/song/media/outer/url?id=%d.mp3"%songId
+    # return json.dumps({
+    #     'data':[
+    #         {
+    #             'url':url
+    #         }
+    #         ]
+    #     })
     # return url
 
     url = "http://music.163.com/weapi/song/enhance/player/url?csrf_token="
@@ -79,24 +93,42 @@ def getSongUrl(songId):
         'br':128000,
         'csrf_token':''
     }
-    return getJson(url,params)
+    return getJson(url,params,printurl = True,printresult = True)
+
     # print result
     # return result
     # result = json.loads(result)
     # mp3url = result['data'][0]['url']
-    # return mp3url
+    # # return mp3url
     # return getJson(url,params)
 
 def encryptedSongId(id): #dfsId是很长的id，目前已消失
-    byte1 = bytearray('3go8&$8*3*3h0k(2)2')
-    byte2 = bytearray(id)
-    byte1_len = len(byte1)
-    for i in xrange(len(byte2)):
-        byte2[i] = byte2[i]^byte1[i%byte1_len]
-    m = md5.new()
-    m.update(byte2)
-    result = m.digest().encode('base64')[:-1]
-    result = result.replace('/', '_')
-    result = result.replace('+', '-')
-    return result
+    # byte1 = bytearray('3go8&$8*3*3h0k(2)2')
+    # byte2 = bytearray(id)
+    # byte1_len = len(byte1)
+    # for i in xrange(len(byte2)):
+    #     byte2[i] = byte2[i]^byte1[i%byte1_len]
+    # m = hashlib.md5.new()
+    # m.update(byte2)
+    # result = m.digest().encode('base64')[:-1]
+    # result = result.replace('/', '_')
+    # result = result.replace('+', '-')
+    # return result
+    magic = bytearray('3go8&$8*3*3h0k(2)2', 'u8')
+    song_id = bytearray(id, 'u8')
+    magic_len = len(magic)
+    for i, sid in enumerate(song_id):
+        song_id[i] = sid ^ magic[i % magic_len]
+    m = hashlib.md5(song_id)
+    result = m.digest()
+    result = base64.b64encode(result).replace(b'/', b'_').replace(b'+', b'-')
+    return result.decode('utf-8')
 
+# if __name__ == "__main__":
+#     songid = '15751244'
+#     enStr = encryptedSongId(songid)
+#     print enStr
+#     url = 'http://m%d.music.126.net/%s/%s.mp3'%(random.randrange(1, 3), enStr, songid)
+#     print url
+#     detail = getSongDetail('2160833')
+#     print detail

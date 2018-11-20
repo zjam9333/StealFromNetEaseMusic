@@ -34,38 +34,25 @@ def setSongInfo(songfilepath, songtitle, songartist, songalbum, songpicpath):
                     )
     audio.save()
 
-def downloadFile(source_url, save_path, file_size = None, md5_value = None, retry_time = None):
+def downloadFile(source_url, save_path):
     if os.path.exists(save_path):
         print "file exists : " + save_path
-        if file_size:
-            old_size = os.path.getsize(save_path)
-            print "old size: %d, new size: %d"%(old_size,file_size)
-            if old_size < file_size: #check size
-                print "file should download again : " + save_path
-                os.remove(save_path)
-            else:
-                return True
-        else:
+        if save_path.endswith('.jpg'):
+            return True
+        if save_path.endswith('.mp3'):
+            # 如何判断要不要重新下载？
             return True
 
     print "downloading file...to " + save_path
-    
-    res = requests.get(source_url, stream = True)
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:56.0) Gecko/20100101 Firefox/56.0',
+        'Referer': 'http://music.163.com/'
+    } 
+    res = requests.get(source_url, stream = True, headers = headers)
     with open(save_path, 'wb') as savefile:
-        for chunk in res.iter_content(chunk_size = 128):
+        for chunk in res.iter_content(chunk_size = 1024):
             savefile.write(chunk)
-
-    #check md5
-    if md5_value:
-        with open(save_path,'r') as downloadedfile:
-            old_md5 = str(md5(downloadedfile.read()).hexdigest()).lower()
-            if old_md5 != md5_value:
-                print "delete file: " + save_path
-                os.remove(save_path)
-                if retry_time:
-                    if retry_time < 5:
-                        return downloadFile(source_url, save_path, file_size = file_size, md5_value = md5_value, retry_time = retry_time + 1)
-                return False
+    
     print "download completed: " + save_path
     return True
 
@@ -86,7 +73,7 @@ def downloadPlaylistSongs(playlistid):
     if not os.path.exists(saveDir):
         os.mkdir(saveDir)
 
-    pool = Pool(10)
+    pool = Pool(5)
     for song in tracks:
         pool.apply_async(func=downloadSong, args=(song, saveDir,))
         # downloadSong(song,saveDir)
@@ -104,6 +91,14 @@ def downloadPlaylistSongs(playlistid):
     print "finish"
     return
 
+def fileExisted(filepath):
+    if os.path.exists(filepath):
+        if filepath.endswith('.jpg'):
+            return True
+        if filepath.endswith('.mp3'):
+            return True
+    return False
+
 def downloadSong(songdict,saveDir):
     '''
     {"data":[{"id":2979310,"url":"http://m10.music.126.net/20181101170546/a7cf5aeeb99762762be132bb804edb51/ymusic/b6f7/69aa/e638/65947efd75d12b00cb6cb3d776aefba4.mp3","br":128000,"size":4394182,"md5":"65947efd75d12b00cb6cb3d776aefba4","code":200,"expi":1200,"type":"mp3","gain":-2.0E-4,"fee":0,"uf":null,"payed":0,"flag":0,"canExtend":false,"freeTrialInfo":null}],"code":200}
@@ -114,12 +109,7 @@ def downloadSong(songdict,saveDir):
     s_album = songdict['album']['name']
     s_pic_url = songdict['album']['picUrl']
 
-    songinfo = json.loads(neteasetool.getSongUrl(s_id))
-    s_mp3_url = songinfo['data'][0]['url']
-    s_mp3_md5 = songinfo['data'][0]['md5']
-    s_mp3_size = songinfo['data'][0]['size']
-
-    print "<song: name: %s, artist: %s, album: %s"%(s_name, s_artist, s_album)
+    print "<title: %s, artist: %s, album: %s"%(s_name, s_artist, s_album)
 
     songfilename = ("%s - %s"%(s_name, s_artist)).replace("/","")
     albumfilename = ("%s - %s"%(s_album, s_artist)).replace("/","")
@@ -127,7 +117,18 @@ def downloadSong(songdict,saveDir):
     mp3filepath = saveDir + songfilename + ".mp3"
     jpgfilepath = saveDir + albumfilename + ".jpg"
 
-    downloadedmp3 = downloadFile(s_mp3_url,mp3filepath,file_size=s_mp3_size,md5_value=s_mp3_md5)
+    if fileExisted(mp3filepath):
+        print "file exist: " + mp3filepath
+        return
+    # don't request mp3 url if file existed, it will shut you down
+
+    songinfo = json.loads(neteasetool.getSongUrl(s_id))
+    s_mp3_url = songinfo['data'][0]['url']
+    # s_mp3_md5 = songinfo['data'][0]['md5']
+    # s_mp3_size = songinfo['data'][0]['size']
+    # print songdict
+
+    downloadedmp3 = downloadFile(s_mp3_url,mp3filepath)
     if downloadedmp3:
         downloadedjpg = downloadFile(s_pic_url,jpgfilepath)
         if downloadedjpg:
