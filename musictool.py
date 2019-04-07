@@ -7,7 +7,7 @@ from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB
 import neteasetool
 from multiprocessing import Pool
 
-myFilePath = "savedFiles"
+myFilePath = "StolenMusic"
 
 def setSongInfo(songfilepath, songtitle, songartist, songalbum, songpicpath):
     audio = ID3(songfilepath)

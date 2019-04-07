@@ -77,22 +77,22 @@ def getSongDetail(songId): #2160833
 
 def getSongUrl(songId):
     # params = None
-    # url = "http://music.163.com/song/media/outer/url?id=%d.mp3"%songId
-    # return json.dumps({
-    #     'data':[
-    #         {
-    #             'url':url
-    #         }
-    #         ]
-    #     })
-    # return url
+    url = "http://music.163.com/song/media/outer/url?id=%d.mp3"%songId
+    return json.dumps({
+        'data':[
+            {
+                'url':url
+            }
+            ]
+        })
+    return url
 
-    url = "http://music.163.com/weapi/song/enhance/player/url?csrf_token="
-    params = {
-        'ids':[songId],
-        'br':128000,
-        'csrf_token':''
-    }
+    # url = "http://music.163.com/weapi/song/enhance/player/url?csrf_token="
+    # params = {
+    #     'ids':[songId],
+    #     'br':128000,
+    #     'csrf_token':''
+    # }
     return getJson(url,params,printurl = True,printresult = True)
 
     # print result
