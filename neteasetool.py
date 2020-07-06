@@ -1,7 +1,7 @@
 #coding=utf-8
 import requests
 import json
-import paramtool
+# import paramtool
 import hashlib
 import base64
 import random
@@ -10,10 +10,10 @@ def getJson(url, params, printurl = False, printresult = False):
     if printurl:
         print url
     data = None
-    if params:
-        if printurl:
-            print params
-        data = paramtool.encodedict(params)
+    # if params:
+    #     if printurl:
+    #         print params
+    #     data = paramtool.encodedict(params)
         # print "post data:" + json.dumps(data)
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:56.0) Gecko/20100101 Firefox/56.0',
@@ -63,7 +63,7 @@ def getPlaylistDetail(playlistId): #971002652
     # }
     # print params
     params = None
-    url = "https://music.163.com/api/playlist/detail?id=%d"%playlistId
+    url = "https://music.163.com/api/playlist/detail?id=%s"%playlistId
     return getJson(url,params,printurl = True)
 
 def getSongDetail(songId): #2160833

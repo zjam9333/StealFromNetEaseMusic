@@ -1,13 +1,11 @@
 #coding=utf-8
 import musictool
+import argparse
 
-if __name__ == "__main__":
+if __name__ == "__main__": 
 
-    # musictool.downloadPlaylistSongs(971002652) #rnb
-    # musictool.downloadPlaylistSongs(962651306) #metallica
-    # musictool.downloadPlaylistSongs(436040199) #sub
-    # musictool.downloadPlaylistSongs(2669081716) #best RNB
-    musictool.downloadPlaylistSongs(2745605518) #民歌蔡琴
-
-    
-    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-id", "--id", type = str, default = "2745605518") #民歌蔡琴
+    userArgs = vars(parser.parse_args())
+    id = userArgs["id"]
+    musictool.downloadPlaylistSongs(id)
