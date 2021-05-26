@@ -11,3 +11,5 @@ os
 hashlib
 mutagen
 multiprocessing
+
+# 现播放列表接口只返回10个数据，待修理
